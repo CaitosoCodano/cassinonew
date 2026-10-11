@@ -73,9 +73,12 @@ jobs:
           status=$?
           cat /tmp/db.log
           if [ "$status" -ne 0 ]; then
-            echo "::error title=Prepare database::exit ${status}"
-            base64 -w0 /tmp/db.log
-            echo
+            # A workflow-command message must stay on one line: a continuation
+            # line is dropped before the annotation is stored. The tail is
+            # base64-encoded so that '%', '::' and newlines inside it cannot be
+            # read as syntax.
+            printf '::error title=Prepare database::exit %s::%s\n' \
+              "$status" "$(base64 -w0 /tmp/db.log | tail -c 3000)"
           fi
           exit "$status"
 
