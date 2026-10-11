@@ -67,7 +67,17 @@ jobs:
       # the suite then runs against a database that was never created.
       - name: Prepare the database
         shell: bash
-        run: bin/rails db:prepare
+        run: |
+          set +e
+          bin/rails db:prepare > /tmp/db.log 2>&1
+          status=$?
+          cat /tmp/db.log
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Prepare database::exit ${status}"
+            base64 -w0 /tmp/db.log
+            echo
+          fi
+          exit "$status"
 
       - name: Run the test suite
         shell: bash
