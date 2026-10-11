@@ -16,6 +16,13 @@ jobs:
     name: Backend
     runs-on: ubuntu-latest
 
+    # The application lives in backend/, not at the repository root. Without
+    # this every `bin/...` invocation resolves to a path that does not exist and
+    # the shell reports "command not found" (exit 127) before Rails ever starts.
+    defaults:
+      run:
+        working-directory: backend
+
     services:
       postgres:
         image: postgres:16
@@ -35,6 +42,12 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/luminara_test
       SECRET_KEY_BASE: ci-secret-key-base-not-used-for-anything-real-0000000000
 
+      # `uses:` steps ignore defaults.run.working-directory, so setup-ruby has to
+      # be told where the Gemfile is. Left unset it finds no Gemfile at the
+      # workspace root, installs nothing, and the suite then dies trying to load
+      # bundler/setup.
+      BUNDLE_GEMFILE: ${{ github.workspace }}/backend/Gemfile
+
     steps:
       - uses: actions/checkout@v4
 
@@ -50,26 +63,11 @@ jobs:
 
       # `shell: bash` opts into `-o pipefail`. The default shell is `bash -e`,
       # where a pipeline reports the exit status of the *last* command: piping a
-      # failing command into `tee` would turn a hard failure into a green step,
-      # and the suite would then run against a database that was never created.
+      # failing command into `tee` turns a hard failure into a green step, and
+      # the suite then runs against a database that was never created.
       - name: Prepare the database
         shell: bash
-        run: |
-          set +e
-          {
-            echo "--- ls ---"; ls -l bin/rails
-            echo "--- shebang bytes ---"; head -1 bin/rails | od -c | head -4
-            echo "--- ruby ---"; command -v ruby; ruby -v
-            echo "--- direct run ---"
-          } > /tmp/env.log 2>&1
-          bin/rails db:prepare >> /tmp/env.log 2>&1
-          status=$?
-          cat /tmp/env.log
-          {
-            echo "::error title=Prepare database::exit ${status}"
-            tail -c 4000 /tmp/env.log
-          }
-          exit "$status"
+        run: bin/rails db:prepare
 
       - name: Run the test suite
         shell: bash
@@ -79,11 +77,12 @@ jobs:
           status=$?
           cat /tmp/test.log
           if [ "$status" -ne 0 ]; then
-            # Mirrored into an annotation: the job log is not retrievable
-            # through the API, but annotations are, so a failure is diagnosable
-            # without downloading artefacts by hand.
+            # The job log cannot be read through the API without a token, but
+            # annotations can. The log is attached base64-encoded so that '%',
+            # '::' and newlines inside it cannot truncate the workflow command.
             echo "::error title=Backend suite::exit ${status}"
-            tail -c 5000 /tmp/test.log
+            base64 -w0 /tmp/test.log
+            echo
           fi
           exit "$status"
 
