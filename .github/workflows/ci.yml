@@ -85,22 +85,34 @@ jobs:
           fi
           exit "$status"
 
-      - name: Run the test suite
-        shell: bash
-        run: |
-          set +e
-          bin/rails test > /tmp/test.log 2>&1
-          status=$?
-          cat /tmp/test.log
-          if [ "$status" -ne 0 ]; then
-            # The job log cannot be read through the API without a token, but
-            # annotations can. The log is attached base64-encoded so that '%',
-            # '::' and newlines inside it cannot truncate the workflow command.
-            echo "::error title=Backend suite::exit ${status}"
-            base64 -w0 /tmp/test.log
-            echo
-          fi
-          exit "$status"
+      # Split by directory and capped with timeout-minutes on purpose. A single
+      # `bin/rails test` that wedges turns the whole job into an hour-long
+      # mystery: the failure is only visible once the step exits, and it never
+      # does. Here each group reports its own conclusion as soon as it finishes,
+      # so a hang shows up as one named step going red.
+      - name: Models
+        timeout-minutes: 4
+        run: bin/rails test test/models
+
+      - name: Services
+        timeout-minutes: 6
+        run: bin/rails test test/services
+
+      - name: Controllers
+        timeout-minutes: 6
+        run: bin/rails test test/controllers
+
+      - name: Integration
+        timeout-minutes: 6
+        run: bin/rails test test/integration
+
+      - name: Mailers
+        timeout-minutes: 4
+        run: bin/rails test test/mailers
+
+      - name: Top-level tests
+        timeout-minutes: 6
+        run: bin/rails test test/*.rb
 
       - name: Confirm the autoloader agrees with the file layout
         run: bin/rails zeitwerk:check
