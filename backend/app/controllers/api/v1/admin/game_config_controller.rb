@@ -11,13 +11,13 @@ module Api
 
         # Monte Carlo sample bounds. The measurement is real compute over every
         # reel position for every spin, so the ceiling is what keeps a single
-        # request from occupying a core: at 25,000 spins the confidence interval
-        # is still wide enough to be meaningful and to visibly move between runs,
-        # which is the entire point of showing the operator an error bar instead
-        # of a claimed number.
+        # request from occupying a core. At 10,000 spins the confidence interval
+        # is already wide enough to be worth showing, and to visibly move
+        # between runs, which is the entire point of putting an error bar in
+        # front of the operator instead of a claimed number.
         MIN_RTP_SPINS = 500
-        MAX_RTP_SPINS = 25_000
-        DEFAULT_RTP_SPINS = 20_000
+        MAX_RTP_SPINS = 10_000
+        DEFAULT_RTP_SPINS = 5_000
         private_constant :MIN_RTP_SPINS, :MAX_RTP_SPINS, :DEFAULT_RTP_SPINS
 
         # GET /api/v1/admin/game_config

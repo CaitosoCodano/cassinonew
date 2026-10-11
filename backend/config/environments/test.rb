@@ -22,6 +22,18 @@ Rails.application.configure do
   config.consider_all_requests_local = true
   config.cache_store = :null_store
 
+  # Background jobs must not run in threads during tests. The default :async
+  # adapter opens its own connection and, for every deliver_later, immediately
+  # goes looking for the record the test has just written but not yet
+  # committed. On SQLite that surfaces as a busy timeout; on PostgreSQL it is a
+  # row-level lock wait, and the test cannot finish because it is itself waiting
+  # on the job at shutdown. Every registration, verification and password-reset
+  # test paid for that stall.
+  #
+  # The :test adapter records the enqueues instead of performing them. Wrap a
+  # block in perform_enqueued_jobs when a test genuinely needs the work done.
+  config.active_job.queue_adapter = :test
+
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 

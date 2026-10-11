@@ -158,7 +158,7 @@ class AdminGameConfigTest < ActionDispatch::IntegrationTest
     # the endpoint still runs a sample that pins a core for seconds.
     get "/api/v1/admin/game_config/rtp", params: { spins: 10_000_000 }
     assert_response :success
-    assert_operator json_body.dig("data", "spins"), :<=, 25_000
+    assert_operator json_body.dig("data", "spins"), :<=, 10_000
 
     get "/api/v1/admin/game_config/rtp", params: { spins: 1 }
     assert_response :success
