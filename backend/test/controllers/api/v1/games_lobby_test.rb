@@ -61,6 +61,36 @@ class GamesLobbyTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "the lobby search ignores case" do
+    provider = create_provider
+    create_game(provider: provider, slug: "dragon_fortune", name: "Dragon Fortune")
+    create_game(provider: provider, slug: "buffalo_fortune", name: "Buffalo Fortune")
+
+    # SQLite folds ASCII case inside LIKE; PostgreSQL does not. The query has
+    # to lower both sides for the result to be the same on either engine.
+    { "dragon" => "Dragon Fortune", "DRAGON" => "Dragon Fortune",
+      "DrAgOn" => "Dragon Fortune", "bUFFalo" => "Buffalo Fortune",
+      "FORTUNE" => nil }.each do |query, expected_name|
+      get "/api/v1/games", params: { q: query }
+      assert_response :success
+
+      # "fortune" is in both titles, so it narrows to both rather than one.
+      expected = expected_name ? 1 : 2
+      assert_equal expected, json_body["data"].size, "wrong match count for #{query.inspect}"
+      assert_equal expected_name, json_body["data"].first&.dig("name") if expected_name
+    end
+  end
+
+  test "the lobby search escapes wildcard characters" do
+    provider = create_provider
+    create_game(provider: provider, slug: "dragon_fortune", name: "Dragon Fortune")
+    create_game(provider: provider, slug: "buffalo_fortune", name: "Buffalo Fortune")
+
+    get "/api/v1/games", params: { q: "%" }
+    assert_response :success
+    assert_empty json_body["data"]
+  end
+
   test "launching a game without a configured adapter reports provider_not_configured" do
     user = create_user
     login_as(user)

@@ -10,7 +10,11 @@ module Api
           scope = Game.order(:name)
           scope = scope.where(status: params[:status]) if params[:status].present?
           scope = scope.where(game_provider_id: params[:provider_id]) if params[:provider_id].present?
-          scope = scope.where("slug LIKE :q OR name LIKE :q", q: "%#{params[:q]}%") if params[:q].present?
+          # LOWER() on both sides: SQLite folds ASCII case inside LIKE and
+          # PostgreSQL does not, so a bare LIKE would filter differently
+          # depending on which database is running.
+          like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.downcase)}%"
+          scope = scope.where("LOWER(slug) LIKE :q OR LOWER(name) LIKE :q", q: like) if params[:q].present?
 
           render json: {
             data: scope.limit(200).map { |g| serialize(g) },

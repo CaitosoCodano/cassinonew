@@ -16,8 +16,11 @@ module Api
         scope = scope.where(game_provider_id: params[:provider_id]) if params[:provider_id].present?
 
         if params[:q].present?
-          like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s)}%"
-          scope = scope.where("games.name LIKE :q OR games.slug LIKE :q", q: like)
+          # LOWER() on both sides rather than a bare LIKE. SQLite folds ASCII
+          # case inside LIKE and PostgreSQL does not, so an unqualified LIKE
+          # matches "dragon" on one engine and nothing on the other.
+          like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.downcase)}%"
+          scope = scope.where("LOWER(games.name) LIKE :q OR LOWER(games.slug) LIKE :q", q: like)
         end
 
         records, meta = paginate(scope)

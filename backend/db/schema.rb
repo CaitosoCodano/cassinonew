@@ -254,7 +254,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_231920) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["set_by_id"], name: "index_responsible_gaming_limits_on_set_by_id"
-    t.index ["user_id", "kind", "period"], name: "idx_rg_limits_active_unique", unique: true, where: "active = 1"
+    t.index ["user_id", "kind", "period"], name: "idx_rg_limits_active_unique", unique: true, where: "active"
     t.index ["user_id"], name: "index_responsible_gaming_limits_on_user_id"
   end
 

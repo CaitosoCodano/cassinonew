@@ -18,7 +18,16 @@ class CreateResponsibleGamingLimits < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
+    # One active limit per user, kind and period; superseded rows stay in the
+    # table but drop out of the index so the unique constraint only applies to
+    # the current one.
+    #
+    # The predicate names the column on its own instead of comparing it to 1.
+    # SQLite stores booleans as integers so `active = 1` is accepted there, but
+    # PostgreSQL has a real boolean type and rejects the comparison outright:
+    # "operator does not exist: boolean = integer". A bare `WHERE active` means
+    # the same thing to both.
     add_index :responsible_gaming_limits, %i[user_id kind period], unique: true,
-               where: "active = 1", name: "idx_rg_limits_active_unique"
+               where: "active", name: "idx_rg_limits_active_unique"
   end
 end

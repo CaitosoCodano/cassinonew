@@ -1,27 +1,33 @@
 # Development and test run on SQLite so the app boots with no external
-# services. Production targets PostgreSQL via DATABASE_URL.
+# services. Production, CI and any staging box target PostgreSQL.
 #
-#   SQLite. Versions 3.8.0 and up are supported.
-#   PostgreSQL. Production only (gem "pg", group: :production).
+# DATABASE_URL selects PostgreSQL wherever it is set. Rails merges that URL over
+# the keys declared here instead of replacing the configuration wholesale, so an
+# option declared below survives into the PostgreSQL adapter unless it is also
+# declared as a PostgreSQL option. `timeout` is a SQLite connection option that
+# libpq rejects, which is why the options are spelled out per environment rather
+# than shared through a `default:` anchor: a shared block would push `timeout`
+# into every PostgreSQL connection in every environment.
 #
-default: &default
-  adapter: sqlite3
-  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  timeout: 5000
+#   SQLite:      DATABASE_URL unset
+#   PostgreSQL:  DATABASE_URL=postgres://user:pass@host:5432/luminara
+#
+# See .env.example for the complete list of supported variables.
 
 development:
-  <<: *default
+  adapter: sqlite3
+  timeout: 5000
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   database: storage/development.sqlite3
 
-# Warning: The database defined as "test" will be erased and
-# re-generated from your development database when you run "rake".
+# Warning: The database defined as "test" will be erased and re-generated from
+# your development database when you run "rake".
 test:
-  <<: *default
+  adapter: sqlite3
+  timeout: 5000
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   database: storage/test.sqlite3
 
-# Production uses PostgreSQL. Provide a full connection string, e.g.
-#   postgres://user:pass@host:5432/luminara_production
-# See .env.example for the complete list of supported variables.
 production:
   adapter: postgresql
   encoding: unicode
