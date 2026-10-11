@@ -1,6 +1,1 @@
-# Ruby version for this application.
-#
-# Format is plain "<major>.<minor>.<patch>" with no `ruby-` prefix: that prefix
-# is an rbenv/ruby-build convention, and the GitHub Actions ruby/setup-ruby
-# action treats it as a version string it cannot resolve.
 4.0.7
