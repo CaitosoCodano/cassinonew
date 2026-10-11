@@ -96,35 +96,26 @@ jobs:
       - name: Test suite
         shell: bash
         run: |
-          # One file at a time, each under a wall-clock cap. A step only reports
-          # when it exits, so a single run that wedges reports nothing at all;
-          # per-file granularity turns a hang into one named failure. The whole
-          # suite takes ~20s locally, so 150s per file is already generous.
-          set -u
-          status=0
+          # One invocation, so Rails boots once instead of once per file. The
+          # wall-clock cap and the partial log matter more than the exit code:
+          # a step only reports when it exits, so a wedged run would otherwise
+          # leave nothing to read. --verbose names each test as it starts, which
+          # makes the tail of a killed run identify the test that hung.
+          set +e
+          TESTOPTS="-v" timeout 1200 bin/rails test > /tmp/test.log 2>&1
+          status=$?
+          tail -n 60 /tmp/test.log
 
-          for file in $(find test -name '*_test.rb' | sort); do
-            log="/tmp/test.log"
-
-            # --verbose names every test as it starts, so the partial log of a
-            # timed-out file ends with the test that never finished.
-            if TESTOPTS="-v" timeout 150 bin/rails test "$file" > "$log" 2>&1; then
-              printf 'PASS %s\n' "$file"
-            else
-              code=$?
-              status=1
-              if [ "$code" -eq 124 ]; then
-                printf '::error title=%s::timed out after 150s::%s\n' \
-                  "$file" "$(base64 -w0 "$log" | tail -c 3500)"
-              else
-                # base64 because a workflow-command message must stay on one
-                # line, and '%', '::' and newlines inside Minitest output would
-                # otherwise be read as syntax.
-                printf '::error title=%s::exit %s::%s\n' \
-                  "$file" "$code" "$(base64 -w0 "$log" | tail -c 3500)"
-              fi
-            fi
-          done
+          if [ "$status" -eq 124 ]; then
+            printf '::error title=Test suite::timed out after 20m::%s\n' \
+              "$(base64 -w0 /tmp/test.log | tail -c 3500)"
+          elif [ "$status" -ne 0 ]; then
+            # base64 because a workflow-command message must stay on one line,
+            # and '%', '::' and newlines inside Minitest output would otherwise
+            # be read as syntax.
+            printf '::error title=Test suite::exit %s::%s\n' \
+              "$status" "$(base64 -w0 /tmp/test.log | tail -c 3500)"
+          fi
 
           exit "$status"
 
