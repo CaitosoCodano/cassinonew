@@ -14,13 +14,18 @@ services:
 
     # Wipes the gem install directory so each build installs only what the
     # Gemfile.lock currently pins.
+    # Render builds from the repository root, but the Rails application lives in
+    # backend/. Every path below is therefore relative to that directory: the
+    # client is compiled there and copied into the application's own public/,
+    # so one process serves both the API and the static files from one origin.
     buildCommand: >-
+      cd backend &&
       bundle config set --local path vendor/bundle &&
       bundle install &&
-      cd frontend && npm ci && npm run build && cd .. &&
-      rm -rf public/assets public/sfx &&
-      cp -r frontend/dist/. public/
-    startCommand: bin/rails server -b 0.0.0.0 -p $PORT
+      cd ../frontend && npm ci && npm run build &&
+      rm -rf ../backend/public/assets ../backend/public/sfx &&
+      cp -r dist/. ../backend/public/
+    startCommand: cd backend && bin/rails server -b 0.0.0.0 -p $PORT
 
     healthCheckPath: /up
 
