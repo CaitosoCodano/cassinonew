@@ -53,12 +53,15 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
-          # Pinned explicitly instead of being read from .ruby-version: a runner
-          # image with no prebuilt build for the local Ruby fails this step
-          # before a single test runs, which reads like a broken suite rather
-          # than a toolchain gap. Override with a RUBY_VERSION repository
-          # variable when the project moves forward.
-          ruby-version: ${{ vars.RUBY_VERSION || '3.4.5' }}
+          # Must match .ruby-version, the Dockerfile's RUBY_VERSION and the
+          # Gemfile.lock that produced it. Running the suite on a different
+          # interpreter than the one that resolved the dependencies makes a
+          # boot failure look like a code failure. setup-ruby reads
+          # .ruby-version automatically, but only when it can build that exact
+          # version; keeping it here makes an unavailable toolchain obvious
+          # rather than silent. Override with a RUBY_VERSION repository
+          # variable.
+          ruby-version: ${{ vars.RUBY_VERSION || '4.0.7' }}
           bundler-cache: true
 
       # `shell: bash` opts into `-o pipefail`. The default shell is `bash -e`,
