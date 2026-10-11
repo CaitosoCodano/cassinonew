@@ -9,6 +9,17 @@ module Api
         # Domain services are referenced as `::Games` throughout: a bare
         # `Games` resolves to this controller namespace from inside Api::V1.
 
+        # Monte Carlo sample bounds. The measurement is real compute over every
+        # reel position for every spin, so the ceiling is what keeps a single
+        # request from occupying a core: at 25,000 spins the confidence interval
+        # is still wide enough to be meaningful and to visibly move between runs,
+        # which is the entire point of showing the operator an error bar instead
+        # of a claimed number.
+        MIN_RTP_SPINS = 500
+        MAX_RTP_SPINS = 25_000
+        DEFAULT_RTP_SPINS = 20_000
+        private_constant :MIN_RTP_SPINS, :MAX_RTP_SPINS, :DEFAULT_RTP_SPINS
+
         # GET /api/v1/admin/game_config
         def show
           render json: { data: payload }
@@ -40,17 +51,23 @@ module Api
         # responsive in a request cycle; the UI shows the confidence interval so
         # a noisy sample is visibly noisy rather than presented as fact.
         def rtp
-          spins = [[params.fetch(:spins, 20_000).to_i, 500].max, 100_000].min
+          spins = [[params.fetch(:spins, DEFAULT_RTP_SPINS).to_i, MIN_RTP_SPINS].max, MAX_RTP_SPINS].min
+          target = ::Games::Config["user_rtp_percent"]
 
-          reports = ::Games::Registry.slugs.map do |slug|
-            ::Games::RtpCalibrator.report(
-              slug,
-              target_rtp_percent: ::Games::Config["user_rtp_percent"],
-              spins: spins
-            )
+          # The simulation is deterministic in its inputs, so an operator
+          # refreshing the page or two admins opening the report together would
+          # otherwise each burn a core for the whole sample. Keyed by the target
+          # as well as the sample size, because changing the configured RTP
+          # invalidates every measurement taken against the old one.
+          key = "rtp-report:#{target}:#{spins}"
+
+          reports = Rails.cache.fetch(key, expires_in: 5.minutes) do
+            ::Games::Registry.slugs.map do |slug|
+              ::Games::RtpCalibrator.report(slug, target_rtp_percent: target, spins: spins)
+            end
           end
 
-          render json: { data: { spins: spins, target_percent: ::Games::Config["user_rtp_percent"], games: reports } }
+          render json: { data: { spins: spins, target_percent: target, games: reports } }
         end
 
         private

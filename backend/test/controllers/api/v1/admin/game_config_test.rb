@@ -153,9 +153,16 @@ class AdminGameConfigTest < ActionDispatch::IntegrationTest
   test "the rtp report is capped so a huge request cannot stall the server" do
     login_as(@admin)
 
+    # Measured against the controller's own ceiling rather than a rounded
+    # number, so tightening the cap does not quietly leave this test green while
+    # the endpoint still runs a sample that pins a core for seconds.
     get "/api/v1/admin/game_config/rtp", params: { spins: 10_000_000 }
     assert_response :success
-    assert_operator json_body.dig("data", "spins"), :<=, 100_000
+    assert_operator json_body.dig("data", "spins"), :<=, 25_000
+
+    get "/api/v1/admin/game_config/rtp", params: { spins: 1 }
+    assert_response :success
+    assert_operator json_body.dig("data", "spins"), :>=, 500
   end
 
   test "a player cannot trigger a simulation" do

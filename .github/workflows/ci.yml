@@ -101,13 +101,19 @@ jobs:
           # a step only reports when it exits, so a wedged run would otherwise
           # leave nothing to read. --verbose names each test as it starts, which
           # makes the tail of a killed run identify the test that hung.
+          #
+          # The cap is generous on purpose. The suite is ~20s of Ruby on a
+          # workstation, dominated by a Monte Carlo pass in pure Ruby, and that
+          # degrades disproportionately on a shared runner. 45 minutes is
+          # headroom, not an expectation: a run that reaches it is broken, and
+          # the partial log says which test.
           set +e
-          TESTOPTS="-v" timeout 1200 bin/rails test > /tmp/test.log 2>&1
+          TESTOPTS="-v" timeout 2700 bin/rails test > /tmp/test.log 2>&1
           status=$?
           tail -n 60 /tmp/test.log
 
           if [ "$status" -eq 124 ]; then
-            printf '::error title=Test suite::timed out after 20m::%s\n' \
+            printf '::error title=Test suite::timed out after 45m::%s\n' \
               "$(base64 -w0 /tmp/test.log | tail -c 3500)"
           elif [ "$status" -ne 0 ]; then
             # base64 because a workflow-command message must stay on one line,
