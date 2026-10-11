@@ -45,6 +45,13 @@ frontend/dist/
 backend/public/assets/
 backend/public/sfx/
 
+# The built SPA entrypoint. It is produced by the build step and copied into
+# this directory alongside the hashed asset bundle. Committing it means
+# committing a manifest of files that are deliberately not tracked: the
+# assets/ and sfx/ entries above are ignored, so the version in git points at
+# URLs that 404 for anyone who checks the repository out.
+backend/public/index.html
+
 # ---------------------------------------------------------------------------
 # Databases
 #

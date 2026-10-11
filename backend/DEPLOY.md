@@ -93,8 +93,11 @@ bin/rails db:seed    # roles, feature flags, platform settings, game catalogue
 
 # --- 7. Verify --------------------------------------------------------------
 
-curl -fsS https://your-host/up                      # => {"status":"ok"}
-curl -fsS https://your-host/api/v1/config          # => brand config
+# /up is the health check Rails mounts for this purpose. It answers 200 with a
+# small green page, which is what Render polls to decide an instance is ready.
+curl -fsS -o /dev/null -w '%{http_code}\n' https://your-host/up   # => 200
+curl -fsS https://your-host/api/v1/games                         # => the seeded catalogue
 # then, in a browser:
-#   /register -> create an account -> land signed in with a wallet
-#   /games    -> open a title -> spin -> watch the ledger move
+#   /            -> the client loads and its hashed assets resolve
+#   /register    -> create an account -> land signed in with a wallet
+#   /games       -> open a title -> spin -> watch the ledger move

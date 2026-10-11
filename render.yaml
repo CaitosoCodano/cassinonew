@@ -23,24 +23,28 @@ services:
 
     # Render builds from the repository root, but the Rails application lives in
     # backend/. Every path below is therefore relative to that directory.
+    #
+    # Migration and seeding run at the end of the BUILD command, not in a
+    # pre-deploy command. Render only offers pre-deploy on paid plans, and this
+    # blueprint targets the free one: declared and silently ignored, it would
+    # let the first deploy through to an empty database -- no schema, no
+    # administrator and no game catalogue, since the catalogue is seeded rather
+    # than hard-coded.
+    #
+    # The trade-off is that migrations run before the new version is promoted
+    # rather than alongside it. That is the safer direction anyway: a migration
+    # that cannot apply fails the build instead of failing once the new code is
+    # already live. Move this into preDeployCommand when the service is paid.
     buildCommand: >-
       cd backend &&
       bundle config set --local path vendor/bundle &&
       bundle install &&
       cd ../frontend && npm ci && npm run build &&
       rm -rf ../backend/public/assets ../backend/public/sfx &&
-      cp -r dist/. ../backend/public/
+      cp -r dist/. ../backend/public/ &&
+      cd ../backend && bin/rails db:prepare && bin/rails db:seed
 
     startCommand: cd backend && bin/rails server -b 0.0.0.0 -p $PORT
-
-    # Runs after the image is built and before the new version is promoted.
-    # Without this the first deploy reaches an empty database: no schema, so
-    # every request fails, and no seeds, so there is no administrator and the
-    # lobby lists no games at all.
-    # `db:prepare` loads the schema and applies pending migrations; `db:seed`
-    # is written to be idempotent (every record is looked up before it is
-    # written) so re-running it on each deploy is safe.
-    preDeployCommand: cd backend && bin/rails db:prepare && bin/rails db:seed
 
     healthCheckPath: /up
 
