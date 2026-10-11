@@ -106,13 +106,16 @@ jobs:
           for file in $(find test -name '*_test.rb' | sort); do
             log="/tmp/test.log"
 
-            if timeout 150 bin/rails test "$file" > "$log" 2>&1; then
+            # --verbose names every test as it starts, so the partial log of a
+            # timed-out file ends with the test that never finished.
+            if TESTOPTS="-v" timeout 150 bin/rails test "$file" > "$log" 2>&1; then
               printf 'PASS %s\n' "$file"
             else
               code=$?
               status=1
               if [ "$code" -eq 124 ]; then
-                printf '::error title=%s::timed out after 150s\n' "$file"
+                printf '::error title=%s::timed out after 150s::%s\n' \
+                  "$file" "$(base64 -w0 "$log" | tail -c 3500)"
               else
                 # base64 because a workflow-command message must stay on one
                 # line, and '%', '::' and newlines inside Minitest output would
