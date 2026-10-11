@@ -101,3 +101,5 @@ Thumbs.db
 coverage/
 frontend/coverage/
 *.lcov
+# GitHub workflows live at the repository root, not inside backend/.
+backend/.github/

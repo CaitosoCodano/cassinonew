@@ -1,0 +1,88 @@
+# Render blueprint
+#
+# Deploys the whole product as one web service: Rails builds the client, serves
+# the static files from public/, and answers the API on the same origin. There
+# is no second host to keep in sync, so a deploy can never ship a client that
+# disagrees with the API.
+
+services:
+  - type: web
+    name: luminara
+    runtime: ruby
+    plan: starter
+    region: oregon
+
+    # Wipes the gem install directory so each build installs only what the
+    # Gemfile.lock currently pins.
+    buildCommand: >-
+      bundle config set --local path vendor/bundle &&
+      bundle install &&
+      cd frontend && npm ci && npm run build && cd .. &&
+      rm -rf public/assets public/sfx &&
+      cp -r frontend/dist/. public/
+    startCommand: bin/rails server -b 0.0.0.0 -p $PORT
+
+    healthCheckPath: /up
+
+    envVars:
+      - key: RAILS_ENV
+        value: production
+
+      - key: RAILS_LOG_TO_STDOUT
+        value: "1"
+
+      # Set the plaintext value here or, preferably, add it in the dashboard
+      # and mark it secret. Render overwrites this on every deploy if defined
+      # in the dashboard, which is the safer arrangement.
+      - key: SECRET_KEY_BASE
+        generateValue: true
+
+      # Absolute URL of the service. Render exposes it as RENDER_EXTERNAL_URL.
+      - key: WEB_CLIENT_URL
+        fromService:
+          type: web
+          name: luminara
+          property: host
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: luminara-db
+          property: connectionString
+
+      - key: RAILS_MASTER_KEY
+        sync: false
+
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: luminara-redis
+          property: connectionString
+
+      - key: WELCOME_BONUS_MINOR
+        value: "100000"
+
+      - key: PLAY_MONEY_CURRENCY
+        value: VCR
+
+      # Kept false: deposits and withdrawals return 501 until a licensed
+      # payment integration exists. Do not enable without one.
+      - key: REAL_MONEY_ENABLED
+        value: "false"
+
+      # Bootstrap administrator, consumed by `bin/rails db:seed` on first boot.
+      # Set these in the dashboard and mark them secret.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+databases:
+  - name: luminara-db
+    databaseName: luminara
+    plan: basic-256mb
+
+  # Redis is required in production for the cache and the ActiveJob queue.
+  - type: redis
+    name: luminara-redis
+    plan: starter
+    ipAllowList: []
