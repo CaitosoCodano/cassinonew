@@ -1,0 +1,684 @@
+/* ==========================================================================
+   Game surfaces
+   Lobby cards, the reel machine, the HUD controls and the admin console.
+   ========================================================================== */
+
+/* --- Reel machine -------------------------------------------------------- */
+
+.reels {
+  position: relative;
+  padding: 10px;
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(120, 90, 220, 0.20), transparent 62%),
+    linear-gradient(180deg, rgba(14, 11, 32, 0.98), rgba(5, 4, 12, 1));
+  border: 1px solid var(--c-gold-line-soft);
+  box-shadow:
+    inset 0 0 90px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--shadow-panel);
+  /* `contain: size` decouples this box's height from its contents, which is
+     what stops the canvas from growing the page it is measured inside. */
+  contain: layout paint size;
+  height: clamp(15rem, 40vw, 21rem);
+}
+
+.reels__frame {
+  height: 100%;
+  padding: 7px;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+    inset 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
+.reels__canvas {
+  display: block;
+  /* Absolute positioning keeps the canvas out of the container's flow, so it
+     can never contribute to the height that sizes it. */
+  position: absolute;
+  inset: 7px;
+  width: calc(100% - 14px);
+  height: calc(100% - 14px);
+  border-radius: 6px;
+}
+
+/* --- Game page ----------------------------------------------------------- */
+
+.game-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.game-page__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.game-page__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 5vw, 3rem);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1;
+  background: linear-gradient(180deg, #fff6de 0%, #f2d77c 55%, #c79a3e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 12px 40px rgba(242, 215, 124, 0.18);
+}
+
+.game-page__balance {
+  text-align: right;
+}
+
+.game-page__balance-label {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-ink-dim);
+}
+
+.game-page__balance strong {
+  font-size: 1.6rem;
+  font-family: var(--font-mono);
+  color: var(--c-gold-bright);
+  text-shadow: 0 0 22px rgba(242, 215, 124, 0.35);
+}
+
+/* Free-spin banner */
+
+.game-page__bonus {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1.15rem;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--c-gold-line);
+  background: linear-gradient(90deg, rgba(242, 215, 124, 0.20), rgba(126, 91, 255, 0.22));
+  overflow: hidden;
+}
+
+.game-page__bonus::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 248, 225, 0.16) 50%,
+    transparent 70%
+  );
+  animation: shimmer 2.4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.game-page__bonus-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-ink-muted);
+}
+
+.game-page__bonus-label strong {
+  color: var(--c-gold-bright);
+  font-size: 1.05rem;
+}
+
+.game-page__bonus-mult {
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--c-gold-bright);
+  text-shadow: 0 0 26px rgba(255, 231, 168, 0.6);
+}
+
+/* Readouts */
+
+.game-page__readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.readout {
+  flex: 1 1 9rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--c-gold-line-soft);
+  background: var(--c-bg-raise);
+}
+
+.readout__label {
+  display: block;
+  font-size: 0.64rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-ink-dim);
+}
+
+.readout__value {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  color: var(--c-ink);
+}
+
+/* Controls */
+
+.game-page__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.game-page__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.7rem;
+}
+
+.game-page__row--actions .btn {
+  flex: 1 1 11rem;
+  min-height: 3.1rem;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.field--inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.input--bet {
+  width: 8.5rem;
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.btn__sub {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.game-page__note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--c-warning);
+}
+
+.game-page__note a {
+  color: var(--c-gold);
+}
+
+/* Spin button */
+
+.btn--spin {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow:
+    0 10px 34px -14px rgba(242, 215, 124, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.btn--spin:disabled {
+  filter: grayscale(0.5) brightness(0.85);
+  box-shadow: none;
+}
+
+/* Segmented control */
+
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--c-gold-line-soft);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.seg__btn {
+  padding: 0.38rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c-ink-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.seg__btn:hover:not(:disabled) {
+  color: var(--c-ink);
+}
+
+.seg__btn--on {
+  background: linear-gradient(180deg, #ffe9a3, #f2d77c);
+  color: #1a1400;
+  font-weight: 700;
+  box-shadow: 0 3px 14px -6px rgba(242, 215, 124, 0.9);
+}
+
+.seg__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Sound control */
+
+.sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--c-gold-line-soft);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--c-ink-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.icon-btn--off {
+  color: var(--c-ink-dim);
+  opacity: 0.7;
+}
+
+.slider {
+  width: 6rem;
+  accent-color: var(--c-gold);
+  cursor: pointer;
+}
+
+/* Paytable */
+
+.paytable {
+  margin: 1rem 0 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.paytable__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px dashed var(--c-gold-line-soft);
+}
+
+.paytable__row dt {
+  font-weight: 600;
+  color: var(--c-gold);
+}
+
+.paytable__row dd {
+  margin: 0;
+  text-align: right;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.loading-dot {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 2px solid var(--c-gold-line-soft);
+  border-top-color: var(--c-gold);
+  animation: spin-dot 700ms linear infinite;
+}
+
+@keyframes spin-dot {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Lobby cards --------------------------------------------------------- */
+
+.game-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1.3rem;
+  border-radius: var(--radius-l);
+  border: 1px solid var(--c-gold-line-soft);
+  background:
+    radial-gradient(120% 100% at 20% 0%, rgba(120, 90, 220, 0.22), transparent 60%),
+    var(--c-bg-raise-2);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--shadow-panel);
+  transition: transform var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.game-card--playable:hover,
+.game-card--playable:focus-visible {
+  transform: translateY(-4px);
+  border-color: var(--c-gold-line);
+  box-shadow: var(--shadow-raise);
+}
+
+.game-card--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.game-card__mark {
+  display: grid;
+  place-items: center;
+  width: 3.1rem;
+  height: 3.1rem;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  background: radial-gradient(circle at 35% 25%, rgba(242, 215, 124, 0.38), rgba(20, 16, 40, 0.9));
+  border: 1px solid var(--c-gold-line);
+}
+
+.game-card__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+}
+
+.game-card__meta {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--c-ink-dim);
+}
+
+.game-card__blurb {
+  margin: 0;
+  color: var(--c-ink-muted);
+  font-size: 0.9rem;
+}
+
+.game-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.game-card__tags li {
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--c-gold-line-soft);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-gold);
+}
+
+.game-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--c-gold-line-soft);
+  font-size: 0.82rem;
+  color: var(--c-ink-muted);
+}
+
+.game-card__cta {
+  padding: 0.25rem 0.85rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe9a3, #f2d77c);
+  color: #1a1400;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* --- Admin --------------------------------------------------------------- */
+
+.setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px dashed var(--c-gold-line-soft);
+}
+
+.setting:last-child {
+  border-bottom: 0;
+}
+
+.setting__text {
+  flex: 1 1 22rem;
+}
+
+.setting__label {
+  display: block;
+  font-weight: 600;
+  color: var(--c-gold);
+}
+
+.setting__suffix {
+  color: var(--c-ink-dim);
+  font-weight: 400;
+}
+
+.setting__hint,
+.setting__range {
+  margin: 0.2rem 0 0;
+  font-size: 0.84rem;
+  color: var(--c-ink-muted);
+}
+
+.setting__range {
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--c-ink-dim);
+}
+
+.input--number {
+  width: 9rem;
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch__track {
+  position: relative;
+  display: block;
+  width: 3rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--c-gold-line-soft);
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.switch__track::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.18rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--c-ink-dim);
+  transform: translateY(-50%);
+  transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+
+.switch input:checked + .switch__track {
+  background: rgba(242, 215, 124, 0.28);
+  border-color: var(--c-gold-line);
+}
+
+.switch input:checked + .switch__track::after {
+  transform: translate(1.35rem, -50%);
+  background: var(--c-gold-bright);
+}
+
+.switch input:focus-visible + .switch__track {
+  outline: 2px solid var(--c-gold);
+  outline-offset: 2px;
+}
+
+.switch__label {
+  min-width: 2.2rem;
+  font-size: 0.84rem;
+  color: var(--c-ink-muted);
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.08rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+
+.pill--ok { color: var(--c-success); }
+.pill--off { color: var(--c-ink-dim); }
+
+/* --- Win celebration ----------------------------------------------------- */
+
+.game-page__readout--win .readout__value {
+  color: var(--c-gold-bright);
+  text-shadow: 0 0 20px rgba(242, 215, 124, 0.55);
+  animation: win-pop 420ms var(--ease);
+}
+
+@keyframes win-pop {
+  0% { transform: scale(0.94); }
+  55% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.game-page__bonus-hit {
+  margin-left: 0.5rem;
+  color: var(--c-gold-bright);
+  font-weight: 700;
+}
+
+/* Full-width celebration for a large win. */
+
+.jackpot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 1.5rem 1rem;
+  border-radius: var(--radius-l);
+  border: 1px solid var(--c-gold-line);
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(255, 231, 168, 0.30), transparent 65%),
+    linear-gradient(180deg, rgba(60, 40, 10, 0.9), rgba(20, 14, 40, 0.95));
+  overflow: hidden;
+  animation: jackpot-in 520ms var(--ease);
+}
+
+@keyframes jackpot-in {
+  0% { transform: scale(0.9) translateY(10px); opacity: 0; }
+  60% { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.jackpot__burst {
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 231, 168, 0.22) 20deg,
+    transparent 40deg,
+    transparent 180deg,
+    rgba(255, 231, 168, 0.22) 200deg,
+    transparent 220deg
+  );
+  animation: jackpot-spin 6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes jackpot-spin {
+  to { transform: rotate(360deg); }
+}
+
+.jackpot__label {
+  position: relative;
+  font-size: 0.78rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--c-gold);
+}
+
+.jackpot__amount {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  font-weight: 700;
+  line-height: 1;
+  color: #fff8e1;
+  text-shadow: 0 0 40px rgba(255, 231, 168, 0.75);
+}
+
+/* --- Responsive ---------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .game-page__balance { text-align: left; }
+  .reels__canvas { height: clamp(13rem, 62vw, 17rem); }
+  .game-page__row--actions .btn { flex: 1 1 100%; }
+  .sound { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-page__bonus::after { animation: none; }
+  .game-card--playable:hover { transform: none; }
+}

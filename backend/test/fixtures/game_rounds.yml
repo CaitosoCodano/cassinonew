@@ -1,0 +1,33 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  game: one
+  user: one
+  wallet: one
+  bet_minor: 1
+  total_win_minor: 1
+  status: 1
+  seed: MyString
+  state: 
+  result: 
+  metadata: 
+  ip_address: MyString
+  user_agent: MyString
+  started_at: 2026-10-10 19:19:21
+  ended_at: 2026-10-10 19:19:21
+
+two:
+  game: two
+  user: two
+  wallet: two
+  bet_minor: 1
+  total_win_minor: 1
+  status: 1
+  seed: MyString
+  state: 
+  result: 
+  metadata: 
+  ip_address: MyString
+  user_agent: MyString
+  started_at: 2026-10-10 19:19:21
+  ended_at: 2026-10-10 19:19:21

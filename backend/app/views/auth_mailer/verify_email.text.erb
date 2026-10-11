@@ -1,0 +1,9 @@
+Hi<%= @user.profile&.first_name.present? ? " #{@user.profile.first_name}" : "" %>,
+
+Welcome to <%= @brand %>. Please confirm your email address to activate your account:
+
+<%= @verify_url %>
+
+This link expires in 24 hours. If you did not create an account, you can ignore this message.
+
+-- <%= @brand %>

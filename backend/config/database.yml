@@ -1,0 +1,29 @@
+# Development and test run on SQLite so the app boots with no external
+# services. Production targets PostgreSQL via DATABASE_URL.
+#
+#   SQLite. Versions 3.8.0 and up are supported.
+#   PostgreSQL. Production only (gem "pg", group: :production).
+#
+default: &default
+  adapter: sqlite3
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  timeout: 5000
+
+development:
+  <<: *default
+  database: storage/development.sqlite3
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+test:
+  <<: *default
+  database: storage/test.sqlite3
+
+# Production uses PostgreSQL. Provide a full connection string, e.g.
+#   postgres://user:pass@host:5432/luminara_production
+# See .env.example for the complete list of supported variables.
+production:
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  url: <%= ENV["DATABASE_URL"] %>

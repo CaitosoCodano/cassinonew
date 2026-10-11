@@ -1,0 +1,59 @@
+/* ============================================================
+   Luminara design tokens
+   Deep charcoal palette, restrained metallic gold accent.
+   No neon, no gradients, no glassmorphism, no emoji icons.
+   ============================================================ */
+
+:root {
+  /* Surfaces — deep casino (PG Soft style) */
+  --c-bg: radial-gradient(120% 120% at 50% 0%, #0f0c2b 0%, #07060f 100%);
+  --c-bg-solid: #0b0a1f;
+  --c-bg-raise: linear-gradient(160deg, rgba(30, 24, 58, 0.98) 0%, rgba(18, 15, 36, 0.98) 100%);
+  --c-bg-raise-2: linear-gradient(160deg, rgba(38, 30, 70, 1) 0%, rgba(22, 18, 42, 1) 100%);
+  --c-bg-overlay: rgba(20, 16, 40, 0.92);
+  --c-ink: #f2f0ff;
+  --c-ink-muted: #b9b3e6;
+  --c-ink-dim: #7f78b3;
+
+  /* Gold — premium metallic */
+  --c-gold: #f2d77c;
+  --c-gold-bright: #ffe9a3;
+  --c-gold-dim: #b89a4a;
+  --c-gold-line: rgba(242, 215, 124, 0.45);
+  --c-gold-line-soft: rgba(242, 215, 124, 0.18);
+
+  /* Accent (violet/teal) */
+  --c-accent: #7e5bff;
+  --c-accent-2: #4d7cff;
+
+  /* Semantic */
+  --c-success: #7fb87f;
+  --c-danger: #f26c6c;
+  --c-warning: #f2b56c;
+
+  /* Typography */
+  --font-display: "Poppins", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Inter", "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* Layout */
+  --shell-max: 1280px;
+  --shell-pad: clamp(1rem, 3vw, 2.5rem);
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+
+  /* Reel sizing: one symbol cell. Drives the machine mask and the spin
+     animation distance, so they can never drift out of sync. */
+  --cell-size: clamp(3.4rem, 9vw, 5.2rem);
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur: 160ms;
+
+  /* Shadows */
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.05) inset,
+                  0 40px 80px -40px rgba(90, 70, 200, 0.45),
+                  0 1px 1px rgba(90, 70, 160, 0.25);
+  --shadow-raise: 0 20px 60px -30px rgba(110, 80, 220, 0.6);
+}
