@@ -71,13 +71,22 @@ jobs:
       - name: Prepare the database
         shell: bash
         run: |
-          # db:create + db:schema:load rather than db:prepare. db:prepare runs
-          # the seeds whenever it is the step that created the database, which
-          # puts the game catalogue and platform settings into the test
-          # database and breaks every test that asserts on an empty lobby.
-          set -e
-          bin/rails db:create --database=test
-          bin/rails db:schema:load --database=test
+          # db:schema:load rather than db:prepare. db:prepare runs the seeds
+          # whenever it is the step that created the database, which puts the
+          # game catalogue and the platform settings into the test database and
+          # breaks every test that asserts on an empty lobby.
+          # db:create is best-effort: the Postgres service already provides
+          # the database, and "already exists" is not a failure here.
+          set +e
+          bin/rails db:create > /tmp/db.log 2>&1
+          bin/rails db:schema:load >> /tmp/db.log 2>&1
+          status=$?
+          cat /tmp/db.log
+          if [ "$status" -ne 0 ]; then
+            printf '::error title=Prepare database::exit %s::%s\n' \
+              "$status" "$(base64 -w0 /tmp/db.log | tail -c 3500)"
+          fi
+          exit "$status"
 
       # One directory at a time, each under a wall-clock cap, with the failing
       # output attached to the job. A single `bin/rails test` that wedges
