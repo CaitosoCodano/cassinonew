@@ -49,7 +49,15 @@ jobs:
           bundler-cache: true
 
       - name: Prepare the database
-        run: bin/rails db:test:prepare
+        run: |
+          # `db:prepare` creates the database if it is missing and loads the
+          # schema, so a fresh runner needs no manual step. The shell is not
+          # left on `set -e` for the diagnostics below.
+          bin/rails db:prepare 2>&1 | tee /tmp/db-setup.log
+
+      - name: Show the database log if preparation failed
+        if: failure()
+        run: cat /tmp/db-setup.log
 
       - name: Run the test suite
         run: bin/rails test
