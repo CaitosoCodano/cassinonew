@@ -377,7 +377,39 @@ export const api = {
 };
 
 export function apiErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
+  if (error instanceof ApiError) {
+    // The server explains itself in `details` -- "Email has already been taken",
+    // "Password is too short". Dropping it leaves every screen showing the same
+    // generic sentence, so a player whose address is already registered cannot
+    // tell that from a rejected password and neither can whoever is reading the
+    // deploy log next to them.
+    const detail = formatErrorDetails(error.details);
+    return detail ? `${error.message} (${detail})` : error.message;
+  }
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function formatErrorDetails(details: unknown): string {
+  if (!details) return "";
+  if (typeof details === "string") return details;
+
+  if (Array.isArray(details)) {
+    // Rails hands back one full message per failed validation. Showing all of
+    // them is the point: a form with two problems should not make the player
+    // fix them one submission at a time.
+    return details.map((d) => formatErrorDetails(d)).filter(Boolean).join("; ");
+  }
+
+  if (typeof details === "object") {
+    return Object.entries(details as Record<string, unknown>)
+      .map(([field, messages]) => {
+        const text = formatErrorDetails(messages);
+        return text ? `${field} ${text}` : "";
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+
+  return String(details);
 }

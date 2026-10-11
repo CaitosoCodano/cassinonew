@@ -14,7 +14,15 @@ module Auth
     def self.call(email:, password:, password_confirmation: nil, locale: "en", country_code: nil,
                   marketing_opt_in: false, ip: nil)
       role = Role.default_by_name(Role::PLAYER)
-      return Result.new(user: nil, errors: ["Player role is not configured"]) if role.nil?
+      if role.nil?
+        # Unseeded database. Every signup fails with a generic 422 and no clue
+        # as to why, so say it loudly rather than returning a bare refusal.
+        Rails.logger.error(
+          "Registration refused: role #{Role::PLAYER.inspect} is missing. " \
+          "Run `bin/rails db:seed`; a deployment that skipped seeding cannot accept accounts."
+        )
+        return Result.new(user: nil, errors: ["Account creation is temporarily unavailable"])
+      end
 
       user = User.new(
         email: email,
@@ -34,6 +42,13 @@ module Auth
 
         Result.new(user: user, errors: [])
       else
+        # Registration refusal is one of the few places a player gets no second
+        # chance, and the reason is invisible outside the response body. Put it
+        # in the log: a deployment where every signup returns 422 looks like a
+        # routing fault until someone can read why.
+        Rails.logger.info(
+          "Registration refused for #{user.email.inspect}: #{user.errors.full_messages.join(', ')}"
+        )
         Result.new(user: nil, errors: user.errors.full_messages)
       end
     end
