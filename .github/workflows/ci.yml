@@ -85,34 +85,52 @@ jobs:
           fi
           exit "$status"
 
-      # Split by directory and capped with timeout-minutes on purpose. A single
-      # `bin/rails test` that wedges turns the whole job into an hour-long
-      # mystery: the failure is only visible once the step exits, and it never
-      # does. Here each group reports its own conclusion as soon as it finishes,
-      # so a hang shows up as one named step going red.
-      - name: Models
-        timeout-minutes: 4
-        run: bin/rails test test/models
+      # One directory at a time, each under a wall-clock cap, with the failing
+      # output attached to the job. A single `bin/rails test` that wedges
+      # reports nothing at all: a step only concludes when it exits, and a hang
+      # never exits. Running the groups in a loop keeps the report granular
+      # while `timeout` guarantees the loop always finishes.
+      - name: Test suite
+        shell: bash
+        run: |
+          set -u
+          status=0
 
-      - name: Services
-        timeout-minutes: 6
-        run: bin/rails test test/services
+          for target in test/models test/services test/controllers test/integration test/mailers; do
+            name=$(basename "$target")
+            log="/tmp/test-${name}.log"
 
-      - name: Controllers
-        timeout-minutes: 6
-        run: bin/rails test test/controllers
+            if timeout 360 bin/rails test "$target" > "$log" 2>&1; then
+              printf 'PASS %s\n' "$target"
+            else
+              code=$?
+              status=1
+              if [ "$code" -eq 124 ]; then
+                printf '::error title=%s::timed out after 360s\n' "$target"
+              else
+                # base64 because a workflow-command message must stay on one
+                # line, and '%', '::' and newlines inside Minitest output would
+                # otherwise be read as syntax.
+                printf '::error title=%s::exit %s::%s\n' \
+                  "$target" "$code" "$(base64 -w0 "$log" | tail -c 3500)"
+              fi
+            fi
+          done
 
-      - name: Integration
-        timeout-minutes: 6
-        run: bin/rails test test/integration
+          # Whatever sits directly in test/ rather than in a subdirectory.
+          top_log=/tmp/test-top.log
+          if timeout 360 bin/rails test test/*.rb > "$top_log" 2>&1; then
+            printf 'PASS test/*.rb\n'
+          else
+            code=$?
+            status=1
+            [ "$code" -eq 124 ] \
+              && printf '::error title=test root::timed out after 360s\n' \
+              || printf '::error title=test root::exit %s::%s\n' \
+                   "$code" "$(base64 -w0 "$top_log" | tail -c 3500)"
+          fi
 
-      - name: Mailers
-        timeout-minutes: 4
-        run: bin/rails test test/mailers
-
-      - name: Top-level tests
-        timeout-minutes: 6
-        run: bin/rails test test/*.rb
+          exit "$status"
 
       - name: Confirm the autoloader agrees with the file layout
         run: bin/rails zeitwerk:check
