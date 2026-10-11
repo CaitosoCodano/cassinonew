@@ -40,6 +40,12 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
+          # Pinned explicitly instead of being read from .ruby-version: a runner
+          # image with no prebuilt build for the local Ruby fails this step
+          # before a single test runs, which reads like a broken suite rather
+          # than a toolchain gap. Override with a RUBY_VERSION repository
+          # variable when the project moves forward.
+          ruby-version: ${{ vars.RUBY_VERSION || '3.4.5' }}
           bundler-cache: true
 
       - name: Prepare the database
