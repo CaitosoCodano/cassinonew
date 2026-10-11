@@ -26,13 +26,18 @@ gem "thruster", require: false
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
 
-# --- Production-only dependencies -------------------------------------------------
-# The development and test environments run on SQLite so the app boots with zero
-# external services. Production targets PostgreSQL + Redis (see README + config/).
-group :production do
-  gem "pg", "~> 1.5"
-  gem "redis", "~> 5.0"
-end
+# --- Database drivers ---------------------------------------------------------
+#
+# These sit in the default group rather than :production because DATABASE_URL
+# may point at PostgreSQL in any environment. A CI job that exercises the
+# production schema, or a staging box running RAILS_ENV=test, must be able to
+# load the adapter. Keeping them production-only makes those setups fail with a
+# misleading "adapter not found" rather than a missing dependency.
+#
+# Development and test still default to SQLite, so the app boots with no
+# external services.
+gem "pg", "~> 1.5"
+gem "redis", "~> 5.0"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
