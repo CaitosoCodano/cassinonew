@@ -48,19 +48,29 @@ jobs:
           ruby-version: ${{ vars.RUBY_VERSION || '3.4.5' }}
           bundler-cache: true
 
+      # `shell: bash` opts into `-o pipefail`. The default shell is `bash -e`,
+      # where a pipeline reports the exit status of the *last* command: piping a
+      # failing command into `tee` would turn a hard failure into a green step,
+      # and the suite would then run against a database that was never created.
       - name: Prepare the database
-        run: |
-          # `db:prepare` creates the database if it is missing and loads the
-          # schema, so a fresh runner needs no manual step. The shell is not
-          # left on `set -e` for the diagnostics below.
-          bin/rails db:prepare 2>&1 | tee /tmp/db-setup.log
-
-      - name: Show the database log if preparation failed
-        if: failure()
-        run: cat /tmp/db-setup.log
+        shell: bash
+        run: bin/rails db:prepare
 
       - name: Run the test suite
-        run: bin/rails test
+        shell: bash
+        run: |
+          set +e
+          bin/rails test > /tmp/test.log 2>&1
+          status=$?
+          cat /tmp/test.log
+          if [ "$status" -ne 0 ]; then
+            # Mirrored into an annotation: the job log is not retrievable
+            # through the API, but annotations are, so a failure is diagnosable
+            # without downloading artefacts by hand.
+            echo "::error title=Backend suite::exit ${status}"
+            tail -c 5000 /tmp/test.log
+          fi
+          exit "$status"
 
       - name: Confirm the autoloader agrees with the file layout
         run: bin/rails zeitwerk:check
