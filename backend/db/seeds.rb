@@ -1,3 +1,9 @@
+# The test environment is never seeded. `db:prepare` runs seeds when it is the
+# one that created the database, so on a fresh runner the catalogue and settings
+# below would appear in the test database and every test that asserts on an
+# empty lobby or a fresh account would fail on seeded rows it never asked for.
+return if Rails.env.test?
+
 # Seed data contains ONLY real configuration the platform needs to function:
 # roles, feature flags and platform settings. It never creates fake users,
 # balances, transactions, games or activity.

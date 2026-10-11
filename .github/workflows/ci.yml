@@ -71,19 +71,13 @@ jobs:
       - name: Prepare the database
         shell: bash
         run: |
-          set +e
-          bin/rails db:prepare > /tmp/db.log 2>&1
-          status=$?
-          cat /tmp/db.log
-          if [ "$status" -ne 0 ]; then
-            # A workflow-command message must stay on one line: a continuation
-            # line is dropped before the annotation is stored. The tail is
-            # base64-encoded so that '%', '::' and newlines inside it cannot be
-            # read as syntax.
-            printf '::error title=Prepare database::exit %s::%s\n' \
-              "$status" "$(base64 -w0 /tmp/db.log | tail -c 3000)"
-          fi
-          exit "$status"
+          # db:create + db:schema:load rather than db:prepare. db:prepare runs
+          # the seeds whenever it is the step that created the database, which
+          # puts the game catalogue and platform settings into the test
+          # database and breaks every test that asserts on an empty lobby.
+          set -e
+          bin/rails db:create --database=test
+          bin/rails db:schema:load --database=test
 
       # One directory at a time, each under a wall-clock cap, with the failing
       # output attached to the job. A single `bin/rails test` that wedges
@@ -93,42 +87,32 @@ jobs:
       - name: Test suite
         shell: bash
         run: |
+          # One file at a time, each under a wall-clock cap. A step only reports
+          # when it exits, so a single run that wedges reports nothing at all;
+          # per-file granularity turns a hang into one named failure. The whole
+          # suite takes ~20s locally, so 150s per file is already generous.
           set -u
           status=0
 
-          for target in test/models test/services test/controllers test/integration test/mailers; do
-            name=$(basename "$target")
-            log="/tmp/test-${name}.log"
+          for file in $(find test -name '*_test.rb' | sort); do
+            log="/tmp/test.log"
 
-            if timeout 360 bin/rails test "$target" > "$log" 2>&1; then
-              printf 'PASS %s\n' "$target"
+            if timeout 150 bin/rails test "$file" > "$log" 2>&1; then
+              printf 'PASS %s\n' "$file"
             else
               code=$?
               status=1
               if [ "$code" -eq 124 ]; then
-                printf '::error title=%s::timed out after 360s\n' "$target"
+                printf '::error title=%s::timed out after 150s\n' "$file"
               else
                 # base64 because a workflow-command message must stay on one
                 # line, and '%', '::' and newlines inside Minitest output would
                 # otherwise be read as syntax.
                 printf '::error title=%s::exit %s::%s\n' \
-                  "$target" "$code" "$(base64 -w0 "$log" | tail -c 3500)"
+                  "$file" "$code" "$(base64 -w0 "$log" | tail -c 3500)"
               fi
             fi
           done
-
-          # Whatever sits directly in test/ rather than in a subdirectory.
-          top_log=/tmp/test-top.log
-          if timeout 360 bin/rails test test/*.rb > "$top_log" 2>&1; then
-            printf 'PASS test/*.rb\n'
-          else
-            code=$?
-            status=1
-            [ "$code" -eq 124 ] \
-              && printf '::error title=test root::timed out after 360s\n' \
-              || printf '::error title=test root::exit %s::%s\n' \
-                   "$code" "$(base64 -w0 "$top_log" | tail -c 3500)"
-          fi
 
           exit "$status"
 
