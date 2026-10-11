@@ -103,7 +103,19 @@ if admin_email.present? && admin_password.present?
   puts "Creating/updating administrator #{admin_email}..."
   admin = User.find_or_initialize_by(email: admin_email.downcase)
   admin.role = Role.find_by!(name: Role::ADMIN)
-  admin.password = admin_password
+
+  # Only set the password when the account is being created. Reassigning it on
+  # every deploy would silently undo a password the owner changed in the admin
+  # area, which is both surprising and a downgrade in security. Set
+  # ADMIN_PASSWORD_FORCE=1 to reset an existing password on purpose.
+  if admin.new_record?
+    admin.password = admin_password
+  elsif ENV["ADMIN_PASSWORD_FORCE"] == "1"
+    admin.password = admin_password
+  else
+    puts "Account already exists; leaving its password untouched."
+  end
+
   admin.status = :active
   admin.email_verified_at ||= Time.current
   admin.save!

@@ -15,6 +15,13 @@ Rails.application.configure do
   # Cache assets for far-future expiry since they are all digest stamped.
   config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}" }
 
+  # Serve the built client out of public/. Stated explicitly because the whole
+  # single-origin design rests on it: with static serving off, the JSON API still
+  # answers and the page itself 404s, which reads as a routing bug rather than a
+  # configuration one.
+  config.public_file_server.enabled =
+    ActiveModel::Type::Boolean.new.cast(ENV.fetch("RAILS_SERVE_STATIC_FILES", "true"))
+
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
@@ -50,10 +57,10 @@ Rails.application.configure do
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
 
-  # Production mail delivery. Provide SMTP_HOST, SMTP_PORT, SMTP_USER,
-  # SMTP_PASSWORD and the public WEB_CLIENT_URL via the environment
-  # (see .env.example). Without SMTP configuration, mail is rendered to
-  # tmp/mails so delivery is never lost silently and the app never 500s.
+  # Production mail delivery. Provide SMTP_HOST, SMTP_PORT, SMTP_USER and
+  # SMTP_PASSWORD via the environment (see .env.example). Without SMTP
+  # configuration, mail is rendered to tmp/mails so delivery is never lost
+  # silently and the app never 500s.
   if ENV["SMTP_HOST"].present?
     config.action_mailer.smtp_settings = {
       address: ENV.fetch("SMTP_HOST"),
@@ -67,8 +74,25 @@ Rails.application.configure do
     config.action_mailer.delivery_method = :file
   end
 
-  # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: ENV.fetch("WEB_CLIENT_URL", "example.com") }
+  # Host used for links generated in mailer templates.
+  #
+  # WEB_CLIENT_URL is an absolute URL, because that is what the mailers need in
+  # order to build a verification link. Action Mailer wants the host on its
+  # own, so both are derived from a single source rather than reading the same
+  # variable with two different expectations: passing the whole URL as :host
+  # puts "https://site.example" inside generated links, which is not a host and
+  # yields a link no mail client can resolve.
+  #
+  # Render publishes the service's public address as RENDER_EXTERNAL_URL, so a
+  # Render deployment needs no manual configuration here at all.
+  client_url = ENV["WEB_CLIENT_URL"].presence ||
+               ENV["RENDER_EXTERNAL_URL"].presence ||
+               "https://example.invalid"
+
+  config.action_mailer.default_url_options = {
+    host: (client_uri = URI.parse(client_url)).host,
+    protocol: client_uri.scheme || "https"
+  }
 
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
   # config.action_mailer.smtp_settings = {

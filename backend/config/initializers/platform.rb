@@ -9,7 +9,11 @@ module Platform
   SUPPORT_EMAIL = ENV.fetch("SUPPORT_EMAIL", "support@example.invalid")
 
   # Root URL of the web client, used to build links in transactional email.
-  WEB_CLIENT_URL = ENV.fetch("WEB_CLIENT_URL", "http://localhost:5173")
+  # Falls back to RENDER_EXTERNAL_URL, which Render sets to the service's public
+  # address, so a Render deployment works without anyone copying it by hand.
+  WEB_CLIENT_URL = ENV["WEB_CLIENT_URL"].presence ||
+                   ENV["RENDER_EXTERNAL_URL"].presence ||
+                   "http://localhost:5173"
 
   # Modelling / regulatory posture. The platform ships as a VIRTUAL-CREDIT
   # sandbox only: no real-money functionality is enabled without the legal,

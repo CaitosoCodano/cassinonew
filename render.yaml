@@ -1,23 +1,28 @@
 # Render blueprint
 #
-# Deploys the whole product as one web service: Rails builds the client, serves
-# the static files from public/, and answers the API on the same origin. There
-# is no second host to keep in sync, so a deploy can never ship a client that
-# disagrees with the API.
+# The whole product is one web service. Rails compiles nothing at boot: the
+# build step compiles the client and copies it into the application's own
+# public/, then Rails serves those static files and answers the API from the
+# same process and the same origin.
+#
+# One origin is not a convenience here, it is a requirement. Session cookies are
+# SameSite=Lax and the CSRF token travels on them, so a client served from one
+# host talking to an API on another would be cross-site: browsers withhold the
+# cookie and every request comes back unauthenticated. There is deliberately no
+# second service to keep in step with this one.
 
 services:
   - type: web
     name: luminara
     runtime: ruby
-    plan: starter
+    # `free` sleeps after 15 minutes idle and takes roughly a minute to wake,
+    # which is fine for evaluation and painful for real use. Change both this
+    # and the database below to `starter` when the site is being used for real.
+    plan: free
     region: oregon
 
-    # Wipes the gem install directory so each build installs only what the
-    # Gemfile.lock currently pins.
     # Render builds from the repository root, but the Rails application lives in
-    # backend/. Every path below is therefore relative to that directory: the
-    # client is compiled there and copied into the application's own public/,
-    # so one process serves both the API and the static files from one origin.
+    # backend/. Every path below is therefore relative to that directory.
     buildCommand: >-
       cd backend &&
       bundle config set --local path vendor/bundle &&
@@ -25,7 +30,17 @@ services:
       cd ../frontend && npm ci && npm run build &&
       rm -rf ../backend/public/assets ../backend/public/sfx &&
       cp -r dist/. ../backend/public/
+
     startCommand: cd backend && bin/rails server -b 0.0.0.0 -p $PORT
+
+    # Runs after the image is built and before the new version is promoted.
+    # Without this the first deploy reaches an empty database: no schema, so
+    # every request fails, and no seeds, so there is no administrator and the
+    # lobby lists no games at all.
+    # `db:prepare` loads the schema and applies pending migrations; `db:seed`
+    # is written to be idempotent (every record is looked up before it is
+    # written) so re-running it on each deploy is safe.
+    preDeployCommand: cd backend && bin/rails db:prepare && bin/rails db:seed
 
     healthCheckPath: /up
 
@@ -36,32 +51,36 @@ services:
       - key: RAILS_LOG_TO_STDOUT
         value: "1"
 
-      # Set the plaintext value here or, preferably, add it in the dashboard
-      # and mark it secret. Render overwrites this on every deploy if defined
-      # in the dashboard, which is the safer arrangement.
+      # Generated once and kept by Render across deploys. Setting it by hand in
+      # the dashboard overrides this, which is the safer arrangement: an env
+      # var defined in both places is reset from the dashboard on every build.
       - key: SECRET_KEY_BASE
         generateValue: true
 
-      # Absolute URL of the service. Render exposes it as RENDER_EXTERNAL_URL.
-      - key: WEB_CLIENT_URL
-        fromService:
-          type: web
-          name: luminara
-          property: host
+      # Not set here on purpose. Render exports RENDER_EXTERNAL_URL to web
+      # services, and the application reads it as the fallback for
+      # WEB_CLIENT_URL, so the verification links in transactional email are
+      # correct without anyone copying a hostname by hand. Set this only when a
+      # custom domain is added, since RENDER_EXTERNAL_URL keeps pointing at the
+      # onrender.com address.
+      # - key: WEB_CLIENT_URL
+      #   sync: false
 
       - key: DATABASE_URL
         fromDatabase:
           name: luminara-db
           property: connectionString
 
-      - key: RAILS_MASTER_KEY
-        sync: false
-
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: luminara-redis
-          property: connectionString
+      # No Redis. Rack::Attack falls back to an in-process store when REDIS_URL
+      # is absent (see config/initializers/rack_attack.rb), which is correct for
+      # a single instance. Add a `type: redis` resource and a REDIS_URL env var
+      # here when running more than one instance, where rate-limit counters have
+      # to be shared.
+      # - key: REDIS_URL
+      #   fromService:
+      #     type: redis
+      #     name: luminara-redis
+      #     property: connectionString
 
       - key: WELCOME_BONUS_MINOR
         value: "100000"
@@ -74,8 +93,13 @@ services:
       - key: REAL_MONEY_ENABLED
         value: "false"
 
-      # Bootstrap administrator, consumed by `bin/rails db:seed` on first boot.
-      # Set these in the dashboard and mark them secret.
+      # Bootstrap administrator, consumed by db:seed. Set these in the
+      # dashboard and mark them secret.
+      #
+      # The password is applied when the account is first created and is left
+      # alone afterwards, so re-running the seeds cannot silently overwrite a
+      # password changed in the admin area. Set ADMIN_PASSWORD_FORCE=1 to
+      # reset one deliberately.
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
@@ -84,10 +108,7 @@ services:
 databases:
   - name: luminara-db
     databaseName: luminara
-    plan: basic-256mb
-
-  # Redis is required in production for the cache and the ActiveJob queue.
-  - type: redis
-    name: luminara-redis
-    plan: starter
-    ipAllowList: []
+    # Render's free PostgreSQL is deleted after 30 days. The ledger is
+    # append-only and there is no export yet, so move this to `starter` before
+    # the expiry date if the data is worth keeping.
+    plan: free
