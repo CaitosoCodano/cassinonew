@@ -88,41 +88,54 @@ jobs:
           fi
           exit "$status"
 
-      # One directory at a time, each under a wall-clock cap, with the failing
-      # output attached to the job. A single `bin/rails test` that wedges
-      # reports nothing at all: a step only concludes when it exits, and a hang
-      # never exits. Running the groups in a loop keeps the report granular
-      # while `timeout` guarantees the loop always finishes.
-      - name: Test suite
+      # Run in two halves rather than one pass. Each half reports its own duration
+      # through an annotation, so a run that is merely slow is distinguishable
+      # from one that is stuck, and a second Rails boot costs far less than the
+      # time saved by not staring at a single opaque step. --verbose names each
+      # test as it starts, so the tail of a killed run points at the hung test.
+      #
+      # The cap is headroom, not an expectation: a run that reaches it is broken,
+      # and the partial log says which test.
+      - name: Test suite - domain
         shell: bash
         run: |
-          # One invocation, so Rails boots once instead of once per file. The
-          # wall-clock cap and the partial log matter more than the exit code:
-          # a step only reports when it exits, so a wedged run would otherwise
-          # leave nothing to read. --verbose names each test as it starts, which
-          # makes the tail of a killed run identify the test that hung.
-          #
-          # The cap is generous on purpose. The suite is ~20s of Ruby on a
-          # workstation, dominated by a Monte Carlo pass in pure Ruby, and that
-          # degrades disproportionately on a shared runner. 45 minutes is
-          # headroom, not an expectation: a run that reaches it is broken, and
-          # the partial log says which test.
           set +e
-          TESTOPTS="-v" timeout 2700 bin/rails test > /tmp/test.log 2>&1
+          TESTOPTS="-v" timeout 2700 bin/rails test test/models test/services test/mailers > /tmp/test.log 2>&1
           status=$?
-          tail -n 60 /tmp/test.log
+          tail -n 40 /tmp/test.log
 
           if [ "$status" -eq 124 ]; then
-            printf '::error title=Test suite::timed out after 45m::%s\n' \
+            printf '::error title=Test suite (domain)::timed out after 45m::%s\n' \
               "$(base64 -w0 /tmp/test.log | tail -c 3500)"
-          elif [ "$status" -ne 0 ]; then
-            # base64 because a workflow-command message must stay on one line,
-            # and '%', '::' and newlines inside Minitest output would otherwise
-            # be read as syntax.
-            printf '::error title=Test suite::exit %s::%s\n' \
-              "$status" "$(base64 -w0 /tmp/test.log | tail -c 3500)"
+          else
+            printf '::notice title=Test suite (domain)::%s\n' \
+              "$(grep -E 'Finished in|runs,' /tmp/test.log | tr '\n' ' ')"
+            if [ "$status" -ne 0 ]; then
+              printf '::error title=Test suite (domain)::exit %s::%s\n' \
+                "$status" "$(base64 -w0 /tmp/test.log | tail -c 3500)"
+            fi
           fi
+          exit "$status"
 
+      - name: Test suite - web
+        shell: bash
+        run: |
+          set +e
+          TESTOPTS="-v" timeout 2700 bin/rails test test/controllers test/integration > /tmp/test.log 2>&1
+          status=$?
+          tail -n 40 /tmp/test.log
+
+          if [ "$status" -eq 124 ]; then
+            printf '::error title=Test suite (web)::timed out after 45m::%s\n' \
+              "$(base64 -w0 /tmp/test.log | tail -c 3500)"
+          else
+            printf '::notice title=Test suite (web)::%s\n' \
+              "$(grep -E 'Finished in|runs,' /tmp/test.log | tr '\n' ' ')"
+            if [ "$status" -ne 0 ]; then
+              printf '::error title=Test suite (web)::exit %s::%s\n' \
+                "$status" "$(base64 -w0 /tmp/test.log | tail -c 3500)"
+            fi
+          fi
           exit "$status"
 
       - name: Confirm the autoloader agrees with the file layout
